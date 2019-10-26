@@ -49,3 +49,22 @@ void physObject::addVelocityChange(glm::vec2 delta)
 {
 	vel += delta;
 }
+
+void physObject::wrapScreen()
+{
+	collider.match(
+	[this](Circle s)
+	{
+		if (pos.y > GetScreenHeight() + s.radius) pos.y = 0.0f - s.radius;
+		if (pos.y < 0 - s.radius) pos.y = GetScreenHeight() + s.radius;
+		if (pos.x > GetScreenWidth() + s.radius) pos.x = 0.0f - s.radius;
+		if (pos.x < 0 - s.radius) pos.x = GetScreenWidth() + s.radius;
+	},
+	[this](AABB s)
+	{
+		if (pos.y > GetScreenHeight() + s.halfExtents.y) pos.y = 0.0f - s.halfExtents.y;
+		if (pos.y < 0 - s.halfExtents.y) pos.y = GetScreenHeight() + s.halfExtents.y;
+		if (pos.x > GetScreenWidth() + s.halfExtents.x) pos.x = 0.0f - s.halfExtents.x;
+		if (pos.x < 0 - s.halfExtents.x) pos.x = GetScreenWidth() + s.halfExtents.x;
+	});
+}

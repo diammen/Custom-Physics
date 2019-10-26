@@ -51,13 +51,8 @@ void game::tickPhys()
 	{
 		i.tickPhys(targetFixedStep);
 		i.addAccel({ 0, 100 });
-		
-		if (i.pos.y >= GetScreenHeight())
-			i.pos.y = 0;
-		if (i.pos.x >= GetScreenWidth())
-			i.pos.x = 0;
-		else if (i.pos.x <= 0 )
-			i.pos.x = GetScreenWidth();
+
+		i.wrapScreen();
 	}
 
 	for (auto& i : physObjects)
