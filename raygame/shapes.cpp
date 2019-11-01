@@ -2,6 +2,7 @@
 #include "raylib.h"
 #include "glm/glm.hpp"
 #include "physics.h"
+#include <iostream>
 
 bool checkCircleCircle(vec2 posA, Circle circleA, vec2 posB, Circle circleB)
 {
@@ -44,19 +45,80 @@ void resolvePhysBodies(physObject & lhs, physObject & rhs)
 	float pen = 0.0f;
 
 	normal = lhs.collider.match(
-	[lhs, rhs, &pen](Circle)
+	[lhs, rhs, &pen](Circle c)
 	{
-		float dist = glm::length(lhs.pos - rhs.pos);
-		float sum = lhs.collider.get<Circle>().radius + rhs.collider.get<Circle>().radius;
+		return rhs.collider.match(
+		[lhs, rhs, &pen](Circle c)		// Circle-Circle
+		{
+			float dist = glm::length(lhs.pos - rhs.pos);
+			float sum = lhs.collider.get<Circle>().radius + rhs.collider.get<Circle>().radius;
 
-		pen = sum - dist;
+			pen = sum - dist;
 
-		return glm::normalize(lhs.pos - rhs.pos);
+			return glm::normalize(lhs.pos - rhs.pos);
+		},
+		[lhs, rhs, &pen](AABB a)		// Circle-AABB
+		{
+			// lhs = circle
+			// rhs = aabb
+
+			vec2 dir = glm::normalize(rhs.pos - lhs.pos);
+			float dist = glm::length(dir) * lhs.collider.get<Circle>().radius;
+			vec2 closest = dir * dist;
+			vec2 penDir = rhs.pos - closest;
+			vec2 rhsCollider = rhs.collider.get<AABB>().halfExtents;
+
+			float distToEdgeX = (rhs.pos.x + rhsCollider.x - closest.x);
+			float distToEdgeY = (rhs.pos.y + rhsCollider.y - closest.y);
+			penDir.x = glm::clamp(closest.x, -distToEdgeX, distToEdgeX);
+			penDir.y = glm::clamp(closest.y, -distToEdgeY, distToEdgeY);
+
+			pen = glm::length(penDir);
+
+			return glm::normalize(penDir);
+		}
+		);
 	},
 	[lhs, rhs, &pen](AABB a)
 	{
-		assert(false && "not yet implemented");
-		return vec2();
+		return rhs.collider.match(
+		[lhs, rhs, &pen](AABB a)		// AABB-AABB
+		{
+			vec2 clampedVec1;
+			vec2 clampedVec2;
+			vec2 lhsCollider = lhs.collider.get<AABB>().halfExtents;
+			vec2 rhsCollider = rhs.collider.get<AABB>().halfExtents;
+
+			clampedVec1 = glm::clamp(lhs.pos, -lhsCollider + lhs.pos, lhsCollider + lhs.pos);
+			clampedVec1 = glm::clamp(lhs.pos, -rhsCollider + rhs.pos, rhsCollider + rhs.pos);
+			clampedVec2 = glm::clamp(rhs.pos, -lhsCollider + lhs.pos, lhsCollider + lhs.pos);
+			clampedVec2 = glm::clamp(rhs.pos, -rhsCollider + rhs.pos, rhsCollider + rhs.pos);
+
+			pen = glm::length(clampedVec1 - clampedVec2) / 2;
+
+			return glm::normalize(clampedVec1 - clampedVec2);
+		},
+		[lhs, rhs, &pen](Circle c)		// AABB-Circle
+		{
+			// lhs = aabb
+			// rhs = circle
+
+			vec2 dir = glm::normalize(lhs.pos - rhs.pos);
+			float dist = glm::length(dir) * rhs.collider.get<Circle>().radius;
+			vec2 closest = dir * dist;
+			vec2 penDir = lhs.pos - closest;
+			vec2 lhsCollider = lhs.collider.get<AABB>().halfExtents;
+
+			float distToEdgeX = (lhs.pos.x + lhsCollider.x - closest.x);
+			float distToEdgeY = (lhs.pos.y + lhsCollider.y - closest.y);
+			penDir.x = glm::clamp(closest.x, -distToEdgeX, distToEdgeX);
+			penDir.y = glm::clamp(closest.y, -distToEdgeY, distToEdgeY);
+
+			pen = glm::length(penDir);
+
+			return glm::normalize(penDir);
+		}
+		);
 	}
 	);
 
